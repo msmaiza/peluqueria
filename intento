@@ -1,0 +1,88 @@
+{
+  "name": "Peluqueria_Agenda",
+  "description": "Flujo automatizado para gestionar consultas, reservas y recordatorios de citas en una peluquería.",
+  "triggers": [
+    {
+      "type": "webhook",
+      "name": "Solicitud_Informacion",
+      "description": "Se activa cuando un cliente solicita información.",
+      "endpoint": "/webhook/solicitud-info"
+    },
+    {
+      "type": "time",
+      "name": "Recordatorio_24h",
+      "description": "Recordatorio 24 horas antes de la cita",
+      "schedule": "0 9 * * *",
+      "timezone": "America/Guayaquil"
+    },
+    {
+      "type": "time",
+      "name": "Recordatorio_2h",
+      "description": "Recordatorio 2 horas antes de la cita",
+      "schedule": "0 */2 * * *",
+      "timezone": "America/Guayaquil"
+    }
+  ],
+  "actions": [
+    {
+      "name": "Consultar_Servicios",
+      "type": "supabase_query",
+      "config": {
+        "project_url": "https://tu-proyecto.supabase.co",
+        "api_key": "TU_API_KEY",
+        "table": "servicios",
+        "columns": ["nombre", "descripcion", "precio"]
+      }
+    },
+    {
+      "name": "Consultar_Info_Empresa",
+      "type": "supabase_query",
+      "config": {
+        "project_url": "https://tu-proyecto.supabase.co",
+        "api_key": "TU_API_KEY",
+        "table": "informacion_empresa",
+        "columns": ["nombre", "direccion", "telefono", "horario"]
+      }
+    },
+    {
+      "name": "Verificar_Disponibilidad",
+      "type": "google_calendar",
+      "config": {
+        "calendar_id": "tu-calendario@gmail.com",
+        "action": "check_availability"
+      }
+    },
+    {
+      "name": "Agendar_Cita",
+      "type": "google_calendar",
+      "config": {
+        "calendar_id": "tu-calendario@gmail.com",
+        "action": "create_event",
+        "fields": ["start_time", "end_time", "client_name", "service"]
+      }
+    },
+    {
+      "name": "Enviar_Recordatorio_Cliente",
+      "type": "notification",
+      "config": {
+        "channels": ["whatsapp", "sms", "email"],
+        "message_template": "Hola {{client_name}}, te recordamos que tienes una cita en Peluquería Crecer Feliz para {{service}} el {{start_time}}.",
+        "time_offset": "{{trigger_type == 'Recordatorio_24h' ? '-24h' : '-2h'}}"
+      }
+    }
+  ],
+  "flow": [
+    {
+      "trigger": "Solicitud_Informacion",
+      "sequence": [
+        "Consultar_Servicios",
+        "Consultar_Info_Empresa",
+        "Verificar_Disponibilidad"
+      ]
+    },
+    {
+      "trigger": ["Recordatorio_24h", "Recordatorio_2h"],
+      "sequence": ["Enviar_Recordatorio_Cliente"]
+    }
+  ]
+}
